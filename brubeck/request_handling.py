@@ -56,7 +56,6 @@ import cPickle as pickle
 from itertools import chain
 import os, sys
 print os.getcwd()
-print sys.path
 from mongrel2 import Mongrel2Connection
 from dictshield.base import ShieldException
 from request import Request, to_bytes, to_unicode
@@ -812,12 +811,11 @@ class Brubeck(object):
     ###
 
     def receive_wsgi_req(self, environ, start_response):
-        request = Request.parse_wsgi_request(environ)
-        handler = self.route_message(request)
-        response = handler()
+        route_coro = coro_spawn(Request.parse_wsgi_request, self, environ)
+        handler_coro = coro_spawn(self.route_message, route_coro.get())
+        response = handler_coro.get()
         start_response(response['status'], response['headers'])
         return [str(response['body'])]
-
 
     def run(self):
         """This method turns on the message handling system and puts Brubeck
